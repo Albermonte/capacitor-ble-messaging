@@ -76,5 +76,10 @@
     "android": {
       "src": "android"
     }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "swiftlint"
+    ]
   }
 }
