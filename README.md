@@ -9,6 +9,33 @@ npm install capacitor-ble-messaging
 npx cap sync
 ```
 
+## Permissions
+
+### Android
+Add the following permissions to your `AndroidManifest.xml` file:
+
+```xml
+<!-- Request legacy Bluetooth permissions on older devices. -->
+<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<!-- Include "neverForLocation" only if you can strongly assert that your app never derives physical location from Bluetooth scan results. -->
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<!-- Needed only if your app makes the device discoverable to Bluetooth devices. -->
+<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+```
+
+### iOS
+Add the following permissions to your `Info.plist` file:
+
+```xml
+<key>NSBluetoothAlwaysUsageDescription</key>
+<string>We use bluetooth to communicate with nearby devices</string>
+```
+
 ## API
 
 <docgen-index>
