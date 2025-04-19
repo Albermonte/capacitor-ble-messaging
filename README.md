@@ -59,6 +59,7 @@ Add the following permissions to your `Info.plist` file:
 * [`addListener('onDeviceConnected', ...)`](#addlistenerondeviceconnected-)
 * [`addListener('onDeviceDisconnected', ...)`](#addlistenerondevicedisconnected-)
 * [`addListener('onMessageReceived', ...)`](#addlisteneronmessagereceived-)
+* [`removeAllListeners()`](#removealllisteners)
 * [Interfaces](#interfaces)
 
 </docgen-index>
@@ -357,6 +358,17 @@ addListener(eventName: 'onMessageReceived', listenerFunc: ({ from, message, time
 | ------------------ | ------------------------------------------------------------------------------------------------------------- |
 | **`eventName`**    | <code>'onMessageReceived'</code>                                                                              |
 | **`listenerFunc`** | <code>({ from, message, timestamp }: { from: string; message: string; timestamp: number; }) =&gt; void</code> |
+
+**Returns:** <code>any</code>
+
+--------------------
+
+
+### removeAllListeners()
+
+```typescript
+removeAllListeners() => any
+```
 
 **Returns:** <code>any</code>
 
