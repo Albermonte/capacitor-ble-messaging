@@ -56,4 +56,5 @@ export interface BLEMessagingPlugin {
   addListener(eventName: 'onDeviceConnected', listenerFunc: ({ uuid }: { uuid: string }) => void): Promise<PluginListenerHandle>;
   addListener(eventName: 'onDeviceDisconnected', listenerFunc: ({ uuid }: { uuid: string }) => void): Promise<PluginListenerHandle>;
   addListener(eventName: 'onMessageReceived', listenerFunc: ({ from, message, timestamp }: { from: string, message: string, timestamp: number }) => void): Promise<PluginListenerHandle>;
+  removeAllListeners(): Promise<void>;
 }
