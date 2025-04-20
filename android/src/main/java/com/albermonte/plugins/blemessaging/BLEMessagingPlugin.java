@@ -292,4 +292,15 @@ public class BLEMessagingPlugin extends Plugin implements BLEMessagingCallback {
         data.put("isScanning", centralImplementation != null && centralImplementation.isScanning());
         call.resolve(data);
     }
+
+    @Override
+    protected void handleOnDestroy() {
+        if (centralImplementation != null) {
+            centralImplementation.cleanup();
+        }
+        if (peripheralImplementation != null) {
+            peripheralImplementation.cleanup();
+        }
+        super.handleOnDestroy();
+    }
 }

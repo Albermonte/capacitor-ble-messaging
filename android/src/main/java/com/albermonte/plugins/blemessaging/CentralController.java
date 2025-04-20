@@ -415,8 +415,15 @@ public class CentralController {
   private void connectToDevice(BluetoothDevice device) {
     if (ActivityCompat.checkSelfPermission(context,
         Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-      return;
+        return;
     }
+    
+    // Close existing connection if present
+    if (bluetoothGattClient != null) {
+        bluetoothGattClient.close();
+        bluetoothGattClient = null;
+    }
+    
     Log.d(TAG, "Connecting to: " + Utils.getDeviceUUID(device.getAddress()));
     bluetoothGattClient = device.connectGatt(context, false, gattCallback);
   }
@@ -451,5 +458,28 @@ public class CentralController {
 
   public boolean isScanning() {
     return isScanning;
+  }
+
+  public void cleanup() {
+    // Stop scanning if needed
+    stopScan();
+    
+    // Close GATT connection
+    if (bluetoothGattClient != null) {
+        if (ActivityCompat.checkSelfPermission(context,
+            Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        bluetoothGattClient.close();
+        bluetoothGattClient = null;
+    }
+    
+    // Clear data
+    foundDevices.clear();
+    connectedDevices.clear();
+    receivingMessage.clear();
+    pendingMessage = null;
+    currentDeviceUuid = null;
+    messageIndex = 0;
   }
 }

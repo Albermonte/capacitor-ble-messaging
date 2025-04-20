@@ -520,4 +520,45 @@ public class PeripheralController {
   public boolean isAdvertising() {
     return isAdvertising;
   }
+
+  /**
+   * Cleans up resources used by the Peripheral controller.
+   * Stops advertising and closes GATT server connections.
+   */
+  public void cleanup() {
+    // Stop advertising if running
+    if (isAdvertising) {
+        stopAdvertising();
+    }
+    
+    // Close GATT server
+    if (bluetoothGattServer != null) {
+        if (ActivityCompat.checkSelfPermission(context,
+            Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        bluetoothGattServer.close();
+        bluetoothGattServer = null;
+    }
+    
+    // Close any GATT client connection (if applicable)
+    if (bluetoothGattClient != null) {
+        if (ActivityCompat.checkSelfPermission(context,
+            Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        bluetoothGattClient.close();
+        bluetoothGattClient = null;
+    }
+    
+    // Clear connected devices
+    connectedDevices.clear();
+    
+    // Reset message variables
+    pendingMessage = null;
+    messageIndex = 0;
+    currentDeviceUuid = null;
+    
+    Log.d(TAG, "PeripheralController resources cleaned up");
+  }
 }
