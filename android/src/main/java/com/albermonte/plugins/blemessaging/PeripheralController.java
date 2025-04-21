@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class PeripheralController {
-  private static final String TAG = "BLEMessaging/PeripheralController";
+  private static final String TAG = "BLEMessaging/Peripheral";
   private final UUID serviceUUID;
   private final Context context;
   private final BLEMessagingCallback callback;
@@ -342,6 +342,7 @@ public class PeripheralController {
       Log.d(TAG, "Received message: " + message + " from " + deviceUUID);
       
       if (EOM_MARKER.equals(message)) {
+        Log.d(TAG, String.format("End of message marker received, full message: %s", pendingMessage));
         // End of message reached, notify listeners
         if (callback != null) {
           JSObject ret = new JSObject();

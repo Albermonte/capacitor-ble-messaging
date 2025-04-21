@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class CentralController {
-  private static final String TAG = "BLEMessaging/CentralController";
+  private static final String TAG = "BLEMessaging/Central";
   private final UUID serviceUUID;
   private final Context context;
   private final BLEMessagingCallback callback;
@@ -197,11 +197,13 @@ public class CentralController {
     messageIndex = 0;
     currentDeviceUuid = uuid;
 
+    Log.d(TAG, "Sending message: " + message + " to " + uuid);
     // Start sending the first chunk
     return sendNextChunk();
   }
 
   private boolean sendNextChunk() {
+    Log.d(TAG, "Sending next chunk to " + currentDeviceUuid);
     if (pendingMessage == null || currentDeviceUuid == null) {
       return false;
     }
@@ -284,6 +286,33 @@ public class CentralController {
     pendingMessage = null;
     messageIndex = 0;
     currentDeviceUuid = null;
+  }
+
+  public boolean disconnectDevice(String uuid) {
+    if (bluetoothGattClient == null) {
+      Log.e(TAG, "No GATT connection to disconnect");
+      return false;
+    }
+
+    BluetoothDevice deviceToDisconnect = null;
+    for (BluetoothDevice device : connectedDevices) {
+      if (Utils.getDeviceUUID(device.getAddress()).equals(uuid)) {
+        deviceToDisconnect = device;
+        break;
+      }
+    }
+
+    if (deviceToDisconnect != null) {
+      if (ActivityCompat.checkSelfPermission(context,
+          Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+        return false;
+      }
+      bluetoothGattClient.disconnect();
+      return true;
+    } else {
+      Log.d(TAG, "Device not found or not connected: " + uuid);
+      return false;
+    }
   }
 
   private final ScanCallback scanCallback = new ScanCallback() {
@@ -481,5 +510,6 @@ public class CentralController {
     pendingMessage = null;
     currentDeviceUuid = null;
     messageIndex = 0;
+    Log.d(TAG, "CentralController cleaned up");
   }
 }

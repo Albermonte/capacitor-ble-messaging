@@ -26,11 +26,29 @@ class CentralController: NSObject {
         self.stopScan()
         os_log("Cleaning up CentralController")
         
+        // Cancel any active peripheral connections
         if let connectedPeripheral = connectedPeripheral {
+            // Unsubscribe from notifications before disconnecting
+            if let characteristic = transferCharacteristic {
+                connectedPeripheral.setNotifyValue(false, for: characteristic)
+            }
+            
+            // Cancel the peripheral connection
             centralManager.cancelPeripheralConnection(connectedPeripheral)
+            
+            self.plugin?.handleDeviceDisconnected(connectedPeripheral.identifier.uuidString)
         }
         
+        // Clear all stored peripherals
+        discoveredPeripherals.removeAll(keepingCapacity: false)
+        connectedPeripheral = nil
+        transferCharacteristic = nil
+        
+        // Clear message state
         data.removeAll(keepingCapacity: false)
+        receivingMessage = ""
+        pendingMessage = nil
+        messageIndex = 0
     }
     
     // MARK: - Public Methods
@@ -46,8 +64,7 @@ class CentralController: NSObject {
                                           options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
         _isScanning = true
         
-        // Notify about scan started
-        NotificationCenter.default.post(name: NSNotification.Name("scanStarted"), object: nil)
+        self.plugin?.handleScanStarted()
         
         // Set timeout if provided
         if timeout > 0 {
@@ -70,8 +87,7 @@ class CentralController: NSObject {
         // Clear discovered peripherals
         discoveredPeripherals.removeAll(keepingCapacity: false)
         
-        // Notify about scan stopped
-        NotificationCenter.default.post(name: NSNotification.Name("scanStopped"), object: nil)
+        self.plugin?.handleScanStopped()
         
         return true
     }
@@ -171,8 +187,7 @@ class CentralController: NSObject {
 
 extension CentralController: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        // Post notification about state change
-        NotificationCenter.default.post(name: NSNotification.Name("centralStateUpdate"), object: nil)
+        self.plugin?.handleCentralStateUpdate()
 
         switch central.state {
         case .poweredOn:
@@ -211,22 +226,13 @@ extension CentralController: CBCentralManagerDelegate {
             discoveredPeripherals.append(peripheral)
             os_log("Added new peripheral to list: %@", peripheral)
             
-            // Notify about the discovery
-            NotificationCenter.default.post(
-                name: NSNotification.Name("deviceFound"), 
-                object: nil, 
-                userInfo: ["uuid": peripheral.identifier.uuidString]
-            )
+            self.plugin?.handleDeviceFound(peripheral.identifier.uuidString)
         }
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         os_log("Failed to connect to %@. %s", peripheral, String(describing: error))
-        NotificationCenter.default.post(
-            name: NSNotification.Name("deviceDisconnected"), 
-            object: nil, 
-            userInfo: ["uuid": peripheral.identifier.uuidString]
-        )
+        self.plugin?.handleDeviceDisconnected(peripheral.identifier.uuidString)
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -234,11 +240,6 @@ extension CentralController: CBCentralManagerDelegate {
         
         // Store as the currently connected peripheral
         connectedPeripheral = peripheral
-        
-        // Stop scanning
-        // if _isScanning {
-        //     self.stopScan()
-        // }
         
         // Clear the data
         data.removeAll(keepingCapacity: false)
@@ -249,12 +250,7 @@ extension CentralController: CBCentralManagerDelegate {
         // Search for services
         peripheral.discoverServices([Utils.serviceUUID])
         
-        // Notify about the connection
-        NotificationCenter.default.post(
-            name: NSNotification.Name("deviceConnected"), 
-            object: nil,
-            userInfo: ["uuid": peripheral.identifier.uuidString]
-        )
+        self.plugin?.handleDeviceConnected(peripheral.identifier.uuidString)
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -265,12 +261,7 @@ extension CentralController: CBCentralManagerDelegate {
             connectedPeripheral = nil
         }
         
-        // Notify about disconnection
-        NotificationCenter.default.post(
-            name: NSNotification.Name("deviceDisconnected"), 
-            object: nil,
-            userInfo: ["uuid": peripheral.identifier.uuidString]
-        )
+        self.plugin?.handleDeviceDisconnected(peripheral.identifier.uuidString)
     }
 }
 
@@ -339,16 +330,10 @@ extension CentralController: CBPeripheralDelegate {
         if stringFromData == Utils.EOM_MARKER {
             // Process the complete message
             let message = String(data: self.data, encoding: .utf8) ?? ""
+
+            os_log("Complete message: %s", message)
             
-            // Notify about received message
-            NotificationCenter.default.post(
-                name: NSNotification.Name("receivedMessage"), 
-                object: nil, 
-                userInfo: [
-                    "message": message, 
-                    "from": peripheral.identifier.uuidString
-                ]
-            )
+            self.plugin?.handleReceivedMessage(message: message, from: peripheral.identifier.uuidString)
             
             // Reset for next message
             data.removeAll(keepingCapacity: false)

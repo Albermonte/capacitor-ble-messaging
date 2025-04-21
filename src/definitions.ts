@@ -57,4 +57,9 @@ export interface BLEMessagingPlugin {
   addListener(eventName: 'onDeviceDisconnected', listenerFunc: ({ uuid }: { uuid: string }) => void): Promise<PluginListenerHandle>;
   addListener(eventName: 'onMessageReceived', listenerFunc: ({ from, message, timestamp }: { from: string, message: string, timestamp: number }) => void): Promise<PluginListenerHandle>;
   removeAllListeners(): Promise<void>;
+  /**
+   * Cleanup the plugin. This is useful to call when the app is closed or when the plugin is no longer needed.
+   * It will stop any ongoing advertising or scanning, and close any open connections.
+   */
+  cleanup(): Promise<void>;
 }

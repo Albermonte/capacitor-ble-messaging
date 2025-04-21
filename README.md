@@ -60,6 +60,7 @@ Add the following permissions to your `Info.plist` file:
 * [`addListener('onDeviceDisconnected', ...)`](#addlistenerondevicedisconnected-)
 * [`addListener('onMessageReceived', ...)`](#addlisteneronmessagereceived-)
 * [`removeAllListeners()`](#removealllisteners)
+* [`cleanup()`](#cleanup)
 * [Interfaces](#interfaces)
 
 </docgen-index>
@@ -369,6 +370,20 @@ addListener(eventName: 'onMessageReceived', listenerFunc: ({ from, message, time
 ```typescript
 removeAllListeners() => any
 ```
+
+**Returns:** <code>any</code>
+
+--------------------
+
+
+### cleanup()
+
+```typescript
+cleanup() => any
+```
+
+Cleanup the plugin. This is useful to call when the app is closed or when the plugin is no longer needed.
+It will stop any ongoing advertising or scanning, and close any open connections.
 
 **Returns:** <code>any</code>
 

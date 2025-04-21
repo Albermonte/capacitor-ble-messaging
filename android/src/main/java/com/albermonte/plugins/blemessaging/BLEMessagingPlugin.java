@@ -156,6 +156,21 @@ public class BLEMessagingPlugin extends Plugin implements BLEMessagingCallback {
     }
 
     @PluginMethod
+    public void disconnectDevice(PluginCall call) {
+        var uuid = call.getString("uuid");
+        if (uuid == null) {
+            call.reject("UUID is required");
+            return;
+        }
+        
+        if (centralImplementation != null && centralImplementation.disconnectDevice(uuid)) {
+            call.resolve();
+        } else {
+            call.reject("Unable to disconnect from device");
+        }
+    }
+
+    @PluginMethod
     public void sendMessage(PluginCall call) {
         var uuid = call.getString("to");
         if (uuid == null) {
@@ -291,6 +306,17 @@ public class BLEMessagingPlugin extends Plugin implements BLEMessagingCallback {
         JSObject data = new JSObject();
         data.put("isScanning", centralImplementation != null && centralImplementation.isScanning());
         call.resolve(data);
+    }
+
+    @PluginMethod
+    public void cleanup(PluginCall call) {
+        if (centralImplementation != null) {
+            centralImplementation.cleanup();
+        }
+        if (peripheralImplementation != null) {
+            peripheralImplementation.cleanup();
+        }
+        call.resolve();
     }
 
     @Override

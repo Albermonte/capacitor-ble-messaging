@@ -19,6 +19,7 @@ public class BLEMessagingPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "sendMessage", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isAdvertising", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isScanning", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cleanup", returnType: CAPPluginReturnPromise),
     ]
     
     // Controllers
@@ -60,14 +61,6 @@ public class BLEMessagingPlugin: CAPPlugin, CAPBridgedPlugin {
             if self.peripheralController == nil {
                 self.peripheralController = PeripheralController()
                 self.peripheralController?.plugin = self
-                
-                // Set up notification handlers for events from PeripheralController
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleAdvertisingStarted(_:)), name: NSNotification.Name("advertisingStarted"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleAdvertisingFailed(_:)), name: NSNotification.Name("advertisingFailed"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleCentralConnected(_:)), name: NSNotification.Name("centralConnected"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleCentralDisconnected(_:)), name: NSNotification.Name("centralDisconnected"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handlePeripheralStateUpdate(_:)), name: NSNotification.Name("peripheralStateUpdate"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleReceivedMessage(_:)), name: NSNotification.Name("receivedMessage"), object: nil)
             }
             
             // Check state and start advertising if ready
@@ -118,15 +111,6 @@ public class BLEMessagingPlugin: CAPPlugin, CAPBridgedPlugin {
             if self.centralController == nil {
                 self.centralController = CentralController()
                 self.centralController?.plugin = self
-                
-                // Set up notification handlers for events from CentralController
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleScanStarted(_:)), name: NSNotification.Name("scanStarted"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleScanStopped(_:)), name: NSNotification.Name("scanStopped"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleDeviceFound(_:)), name: NSNotification.Name("deviceFound"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleDeviceConnected(_:)), name: NSNotification.Name("deviceConnected"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleDeviceDisconnected(_:)), name: NSNotification.Name("deviceDisconnected"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleCentralStateUpdate(_:)), name: NSNotification.Name("centralStateUpdate"), object: nil)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.handleReceivedMessage(_:)), name: NSNotification.Name("receivedMessage"), object: nil)
             }
             
             // Check state and start scanning if ready
@@ -254,8 +238,7 @@ public class BLEMessagingPlugin: CAPPlugin, CAPBridgedPlugin {
     
     private func checkStateAndStartScan(timeout: Double?) {
         guard let centralController = centralController,
-              let pendingCall = pendingScanCall,
-              let serviceUUIDString = serviceUUID else {
+              let pendingCall = pendingScanCall else {
             return
         }
         
@@ -285,112 +268,88 @@ public class BLEMessagingPlugin: CAPPlugin, CAPBridgedPlugin {
     
     // MARK: - Notification Handlers
     
-    @objc func handleAdvertisingStarted(_ notification: Notification) {
+    @objc func handleAdvertisingStarted() {
         notifyListeners("onAdvertisingStarted", data: [:])
     }
 
-    @objc func handleAdvertisingFailed(_ notification: Notification) {
+    @objc func handleAdvertisingFailed() {
         notifyListeners("onAdvertisingFailed", data: [:])
     }
 
-    @objc func handleCentralConnected(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let uuid = userInfo["uuid"] as? String else {
-            return
-        }
-        
+    @objc func handleCentralConnected(_ uuid: String) {
         notifyListeners("onDeviceConnected", data: [
             "uuid": uuid
         ])
     }
     
-    @objc func handleCentralDisconnected(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let uuid = userInfo["uuid"] as? String else {
-            return
-        }
-                
+    @objc func handleCentralDisconnected(_ uuid: String) {
         notifyListeners("onDeviceDisconnected", data: [
             "uuid": uuid
         ])
     }
     
-    @objc func handlePeripheralStateUpdate(_ notification: Notification) {
+    @objc func handlePeripheralStateUpdate() {
         checkStateAndAdvertise()
     }
     
-    @objc func handleScanStarted(_ notification: Notification) {
+    @objc func handleScanStarted() {
         notifyListeners("onScanStarted", data: [:])
     }
     
-    @objc func handleScanStopped(_ notification: Notification) {
+    @objc func handleScanStopped() {
         notifyListeners("onScanStopped", data: [:])
     }
     
-    @objc func handleDeviceFound(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let uuid = userInfo["uuid"] as? String else {
-            return
-        }
-        
+    @objc func handleDeviceFound(_ uuid: String) {
         notifyListeners("onDeviceFound", data: [
             "uuid": uuid
         ])
     }
     
-    @objc func handleDeviceConnected(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let uuid = userInfo["uuid"] as? String else {
-            return
-        }
-        
+    @objc func handleDeviceConnected(_ uuid: String) {
         notifyListeners("onDeviceConnected", data: [
             "uuid": uuid
         ])
     }
     
-    @objc func handleDeviceDisconnected(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let uuid = userInfo["uuid"] as? String else {
-            return
-        }
-        
+    @objc func handleDeviceDisconnected(_ uuid: String) {
         notifyListeners("onDeviceDisconnected", data: [
             "uuid": uuid
         ])
     }
     
-    @objc func handleCentralStateUpdate(_ notification: Notification) {
+    @objc func handleCentralStateUpdate() {
         if let pendingCall = pendingScanCall {
             checkStateAndStartScan(timeout: pendingCall.getDouble("scanTimeout"))
         }
     }
 
-    @objc func handleReceivedMessage(_ notification: Notification) {
-        guard let userInfo = notification.userInfo else {
-            return
-        }
-        
+    @objc func handleReceivedMessage(message: String, from: String) {
         var data: [String: Any] = [:]
         
-        if let message = userInfo["message"] as? String {
-            data["message"] = message
-        }
-        
-        if let uuid = userInfo["from"] as? String {
-            data["from"] = uuid
-        } else if let uuid = userInfo["uuid"] as? String {
-            data["from"] = uuid
-        }
-        
+        data["message"] = message
+        data["from"] = from
         data["timestamp"] = Date().timeIntervalSince1970
         
         notifyListeners("onMessageReceived", data: data)
+    }
+
+    @objc func cleanup(_ call: CAPPluginCall) {
+        peripheralController?.cleanup()
+        centralController?.cleanup()
+        peripheralController = nil
+        centralController = nil
+        pendingAdvertisingCall = nil
+        pendingScanCall = nil
+        call.resolve()
     }
     
     deinit {
         peripheralController?.cleanup()
         centralController?.cleanup()
-        NotificationCenter.default.removeObserver(self)
+        peripheralController = nil
+        centralController = nil
+        pendingAdvertisingCall = nil
+        pendingScanCall = nil
     }
 }

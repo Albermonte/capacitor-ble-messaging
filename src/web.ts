@@ -55,4 +55,8 @@ export class BLEMessagingWeb extends WebPlugin implements BLEMessagingPlugin {
   async addListener(): Promise<PluginListenerHandle> {
     throw this.unimplemented('Not implemented on web.');
   }
+
+  async cleanup(): Promise<void> {
+    throw this.unimplemented('Not implemented on web.');
+  }
 }

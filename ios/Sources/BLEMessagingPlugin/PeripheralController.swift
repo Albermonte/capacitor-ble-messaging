@@ -26,8 +26,17 @@ class PeripheralController: NSObject {
     }
     
     func cleanup() {
-        // Stop advertising when cleaning up
         peripheralManager.stopAdvertising()
+        // peripheralManager.removeAllServices()
+
+        if let central = connectedCentral {
+            self.plugin?.handleCentralDisconnected(central.identifier.uuidString)
+    }
+
+        connectedCentral = nil
+        dataToSend.removeAll(keepingCapacity: false)
+        sendDataIndex = 0
+        receivingMessage.removeAll(keepingCapacity: false)
     }
     
     // MARK: - Helper Methods
@@ -160,7 +169,7 @@ extension PeripheralController: CBPeripheralManagerDelegate {
      */
     internal func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {        
         // Post notification about state change
-        NotificationCenter.default.post(name: NSNotification.Name("peripheralStateUpdate"), object: nil)
+        self.plugin?.handlePeripheralStateUpdate()
         
         switch peripheral.state {
         case .poweredOn:
@@ -211,7 +220,7 @@ extension PeripheralController: CBPeripheralManagerDelegate {
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
         os_log("Central subscribed to characteristic")        
         connectedCentral = central
-        NotificationCenter.default.post(name: NSNotification.Name("centralConnected"), object: nil, userInfo: ["uuid": central.identifier.uuidString])
+        self.plugin?.handleCentralConnected(central.identifier.uuidString)
     }
     
     /*
@@ -220,7 +229,7 @@ extension PeripheralController: CBPeripheralManagerDelegate {
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
         os_log("Central unsubscribed from characteristic")
         connectedCentral = nil
-        NotificationCenter.default.post(name: NSNotification.Name("centralDisconnected"), object: nil, userInfo: ["uuid": central.identifier.uuidString])
+        self.plugin?.handleCentralDisconnected(central.identifier.uuidString)
     }
     
     /*
@@ -235,10 +244,10 @@ extension PeripheralController: CBPeripheralManagerDelegate {
     func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
         if let error = error {
             os_log("Failed to advertise: %s", error.localizedDescription)
-            NotificationCenter.default.post(name: NSNotification.Name("advertisingFailed"), object: nil)
+            self.plugin?.handleAdvertisingFailed()
         } else {
             os_log("Successfully advertised")
-            NotificationCenter.default.post(name: NSNotification.Name("advertisingStarted"), object: nil)
+            self.plugin?.handleAdvertisingStarted()
         }
     }
     
@@ -257,7 +266,8 @@ extension PeripheralController: CBPeripheralManagerDelegate {
             if(stringFromData == Utils.EOM_MARKER) {
                 // End of message
                 // Post notification about received message
-                NotificationCenter.default.post(name: NSNotification.Name("receivedMessage"), object: nil, userInfo: ["message": receivingMessage[uuid] ?? "", "uuid": uuid])
+                os_log("Received EOM, completed message: %s", receivingMessage[uuid] ?? "")
+                self.plugin?.handleReceivedMessage(message: receivingMessage[uuid] ?? "", from: uuid)
                 receivingMessage[aRequest.central.identifier.uuidString] = ""
             } else {
                 // Append to pending message
