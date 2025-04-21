@@ -1,6 +1,6 @@
 {
   "name": "capacitor-ble-messaging",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Messaging between BLE supporting devices",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
